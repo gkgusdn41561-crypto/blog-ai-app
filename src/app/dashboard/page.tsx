@@ -13,7 +13,10 @@ type Post = {
 
 export default function DashboardPage() {
   const [topic, setTopic] = useState("");
-  const [sampleWriting, setSampleWriting] = useState("");
+  const [styleSample, setStyleSample] = useState("");
+  const [styleSaved, setStyleSaved] = useState(false);
+  const [styleEditing, setStyleEditing] = useState(false);
+  const [savingStyle, setSavingStyle] = useState(false);
   const [result, setResult] = useState("");
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -31,9 +34,57 @@ export default function DashboardPage() {
     if (data) setPosts(data as Post[]);
   };
 
+  const loadStyle = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data } = await supabase
+      .from("profiles")
+      .select("style_sample")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (data?.style_sample) {
+      setStyleSample(data.style_sample);
+      setStyleSaved(true);
+    } else {
+      setStyleEditing(true);
+    }
+  };
+
   useEffect(() => {
     loadPosts();
+    loadStyle();
   }, []);
+
+  const handleSaveStyle = async () => {
+    setSavingStyle(true);
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      alert("로그인이 필요합니다.");
+      setSavingStyle(false);
+      return;
+    }
+
+    const { error } = await supabase
+      .from("profiles")
+      .upsert({ id: user.id, email: user.email, style_sample: styleSample });
+
+    if (error) {
+      alert("문체 저장 중 오류가 발생했습니다: " + error.message);
+    } else {
+      setStyleSaved(true);
+      setStyleEditing(false);
+    }
+
+    setSavingStyle(false);
+  };
 
   const handleGenerate = async () => {
     setLoading(true);
@@ -44,7 +95,7 @@ export default function DashboardPage() {
     const res = await fetch("/api/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ topic, sampleWriting }),
+      body: JSON.stringify({ topic, sampleWriting: styleSample }),
     });
 
     const data = await res.json();
@@ -92,6 +143,48 @@ export default function DashboardPage() {
     <main className="max-w-3xl mx-auto px-6 py-12">
       <h1 className="text-2xl font-bold mb-6">블로그 원고 생성</h1>
 
+      <div className="mb-8 border rounded-md p-4 bg-white">
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="font-medium">내 문체</h2>
+          {styleSaved && !styleEditing && (
+            <button
+              onClick={() => setStyleEditing(true)}
+              className="text-sm text-gray-500 underline"
+            >
+              수정하기
+            </button>
+          )}
+        </div>
+
+        {styleEditing ? (
+          <div className="flex flex-col gap-2">
+            <p className="text-sm text-gray-500">
+              평소 쓰던 글을 한 번만 넣어두면, 앞으로 원고를 생성할 때마다
+              자동으로 이 말투를 따라 써드려요.
+            </p>
+            <textarea
+              value={styleSample}
+              onChange={(e) => setStyleSample(e.target.value)}
+              placeholder="이전에 쓴 블로그 글을 붙여넣어보세요"
+              rows={6}
+              className="w-full border rounded-md px-4 py-2"
+            />
+            <button
+              onClick={handleSaveStyle}
+              disabled={savingStyle || !styleSample}
+              className="self-start bg-black text-white rounded-md px-4 py-2 font-medium hover:bg-gray-800 transition disabled:opacity-50"
+            >
+              {savingStyle ? "저장 중..." : "이 문체로 저장하기"}
+            </button>
+          </div>
+        ) : (
+          <p className="text-sm text-gray-600">
+            문체가 저장되어 있어요. 이제부터 원고 생성 시 자동으로 이 말투가
+            적용돼요.
+          </p>
+        )}
+      </div>
+
       <div className="flex flex-col gap-4">
         <div>
           <label className="block text-sm font-medium mb-1">글 주제</label>
@@ -100,19 +193,6 @@ export default function DashboardPage() {
             value={topic}
             onChange={(e) => setTopic(e.target.value)}
             placeholder="예: 가을철 캠핑 준비물 추천"
-            className="w-full border rounded-md px-4 py-2"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium mb-1">
-            내 기존 글 (선택 — 넣으면 내 문체로 써줘요)
-          </label>
-          <textarea
-            value={sampleWriting}
-            onChange={(e) => setSampleWriting(e.target.value)}
-            placeholder="이전에 쓴 블로그 글을 붙여넣어보세요"
-            rows={6}
             className="w-full border rounded-md px-4 py-2"
           />
         </div>
