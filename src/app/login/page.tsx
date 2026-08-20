@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase-browser";
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -18,10 +19,13 @@ export default function LoginPage() {
     setLoading(true);
     const supabase = createClient();
 
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPassword = password.trim();
+
     if (mode === "signup") {
       const { error } = await supabase.auth.signUp({
-        email,
-        password,
+        email: cleanEmail,
+        password: cleanPassword,
       });
 
       if (error) {
@@ -32,8 +36,8 @@ export default function LoginPage() {
       }
     } else {
       const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+        email: cleanEmail,
+        password: cleanPassword,
       });
 
       if (error) {
@@ -58,24 +62,40 @@ export default function LoginPage() {
           {mode === "login" ? "로그인" : "회원가입"}
         </h1>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+        <form
+          onSubmit={handleSubmit}
+          className="flex flex-col gap-3"
+          autoComplete="off"
+        >
           <input
             type="email"
             required
             placeholder="이메일 주소"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            autoComplete="off"
             className="border rounded-md px-4 py-2"
           />
-          <input
-            type="password"
-            required
-            minLength={6}
-            placeholder="비밀번호 (6자 이상)"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="border rounded-md px-4 py-2"
-          />
+          <div className="flex flex-col gap-1">
+            <input
+              type={showPassword ? "text" : "password"}
+              required
+              minLength={6}
+              placeholder="비밀번호 (6자 이상)"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="new-password"
+              className="border rounded-md px-4 py-2"
+            />
+            <label className="flex items-center gap-2 text-sm text-gray-500">
+              <input
+                type="checkbox"
+                checked={showPassword}
+                onChange={(e) => setShowPassword(e.target.checked)}
+              />
+              비밀번호 보이기 (지금 입력된 값을 눈으로 확인하세요)
+            </label>
+          </div>
           <button
             type="submit"
             disabled={loading}
