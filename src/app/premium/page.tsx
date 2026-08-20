@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
-export default function PremiumPage() {
+function PremiumContent() {
   const [loading, setLoading] = useState(false);
   const searchParams = useSearchParams();
   const success = searchParams.get("success");
@@ -48,5 +48,13 @@ export default function PremiumPage() {
         {loading ? "이동 중..." : "프리미엄 시작하기"}
       </button>
     </main>
+  );
+}
+
+export default function PremiumPage() {
+  return (
+    <Suspense fallback={null}>
+      <PremiumContent />
+    </Suspense>
   );
 }
